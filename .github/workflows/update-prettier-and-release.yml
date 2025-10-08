@@ -78,4 +78,38 @@ jobs:
         shell: bash
         run: |
           if ! jq -e '.devDependencies["prettier-plugin-toml"] // .dependencies["prettier-plugin-toml"]' package.json >/dev/null; then
-            npm install
+            npm install --save-dev prettier-plugin-toml
+          fi
+
+      - name: Update .pre-commit-hooks.yml with new Prettier version
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ steps.versions.outputs.latest }}"
+          # Update prettier version in .pre-commit-hooks.yml
+          sed -i "s/prettier@[0-9.]\+/prettier@$VER/" .pre-commit-hooks.yml
+
+      - name: Commit and tag changes
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ steps.versions.outputs.latest }}"
+          git config user.email "$GH_EMAIL"
+          git config user.name "$GH_NAME"
+          git add package.json .pre-commit-hooks.yml
+          git commit -m "chore: update Prettier to v$VER"
+          git tag -a "v$VER" -m "Release v$VER with Prettier $VER"
+          git push origin main
+          git push origin "v$VER"
+
+      - name: Create GitHub Release
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER="${{ steps.versions.outputs.latest }}"
+          gh release create "v$VER" \
+            --title "v$VER" \
+            --notes "Updated Prettier to v$VER"
