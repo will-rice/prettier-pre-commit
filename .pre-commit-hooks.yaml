@@ -1,0 +1,12 @@
+- id: prettier-format
+  name: prettier-format
+  description: "Format JSON, YAML, Markdown, TOML with Prettier"
+  entry: prettier
+  language: node
+  # Prettier gets installed into an isolated nodeenv; no system Node required.
+  additional_dependencies:
+    - prettier@3.3.3
+    - prettier-plugin-toml@0.3.5
+  files: \.(json|ya?ml|md|markdown|toml)$
+  args: ["--write", "--ignore-unknown"]
+  minimum_pre_commit_version: "3.0.0"
