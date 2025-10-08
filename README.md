@@ -1,2 +1,65 @@
 # prettier-pre-commit
-A minimal pre commit hook that uses prettier to format config files in Python projects.
+
+A minimal [pre-commit](https://pre-commit.com/) hook that uses [Prettier](https://prettier.io/) to format configuration files in Python projects.
+
+## Features
+
+- Formats JSON, YAML, Markdown, and TOML files
+- No system Node.js installation required (uses isolated nodeenv)
+- Includes TOML support via `prettier-plugin-toml`
+- Automatically fixes formatting issues
+
+## Installation
+
+Add this to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/will-rice/prettier-pre-commit
+    rev: v1.0.0  # Use the latest version
+    hooks:
+      - id: prettier-format
+```
+
+Then run:
+
+```bash
+pre-commit install
+```
+
+## Usage
+
+The hook will automatically run on staged files matching:
+- `*.json`
+- `*.yaml`, `*.yml`
+- `*.md`, `*.markdown`
+- `*.toml`
+
+To manually format files:
+
+```bash
+pre-commit run prettier-format --all-files
+```
+
+## Configuration
+
+Create a `.prettierrc` file in your repository root to customize formatting options:
+
+```json
+{
+  "tabWidth": 2,
+  "semi": false,
+  "singleQuote": true,
+  "plugins": ["prettier-plugin-toml"]
+}
+```
+
+See [Prettier configuration docs](https://prettier.io/docs/en/configuration.html) for all options.
+
+## Requirements
+
+- pre-commit >= 3.0.0
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
