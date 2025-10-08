@@ -10,3 +10,5 @@ build
 coverage
 .env
 *.log
+.idea/
+.DS_Store
