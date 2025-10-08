@@ -81,14 +81,14 @@ jobs:
             npm install --save-dev prettier-plugin-toml
           fi
 
-      - name: Update .pre-commit-hooks.yml with new Prettier version
+      - name: Update .pre-commit-hooks.yaml with new Prettier version
         if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
         shell: bash
         run: |
           set -euo pipefail
           VER="${{ steps.versions.outputs.latest }}"
-          # Update prettier version in .pre-commit-hooks.yml
-          sed -i "s/prettier@[0-9.]\+/prettier@$VER/" .pre-commit-hooks.yml
+          # Update prettier version in .pre-commit-hooks.yaml
+          sed -i "s/prettier@[0-9.]\+/prettier@$VER/" .pre-commit-hooks.yaml
 
       - name: Commit and tag changes
         if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
@@ -98,7 +98,7 @@ jobs:
           VER="${{ steps.versions.outputs.latest }}"
           git config user.email "$GH_EMAIL"
           git config user.name "$GH_NAME"
-          git add package.json .pre-commit-hooks.yml
+          git add package.json .pre-commit-hooks.yaml
           git commit -m "chore: update Prettier to v$VER"
           git tag -a "v$VER" -m "Release v$VER with Prettier $VER"
           git push origin main
