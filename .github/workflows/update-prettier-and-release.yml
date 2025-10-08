@@ -5,6 +5,10 @@ on:
     - cron: "17 7 * * *"   # daily at 07:17 UTC — change as you like
   workflow_dispatch: {}
 
+concurrency:
+  group: update-prettier
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -17,33 +21,40 @@ jobs:
 
     steps:
       - name: Checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: lts/*
 
       - name: Determine current & latest Prettier versions
         id: versions
+        shell: bash
         run: |
           set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "No package.json present; skipping."
+            echo "current=" >> "$GITHUB_OUTPUT"
+            echo "latest=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           CURRENT=$(jq -r '.devDependencies.prettier // .dependencies.prettier // ""' package.json)
           CURRENT="${CURRENT#^}"; CURRENT="${CURRENT#~}"
-          LATEST=$(npm view prettier version)
+          LATEST=$(npm view prettier version --no-update-notifier --no-fund)
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+            echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
 
-      - name: Exit if already up to date
-        if: steps.versions.outputs.current == steps.versions.outputs.latest
-        run: |
-          echo "Prettier is up to date (v${{ steps.versions.outputs.latest }}). Nothing to do."
+      - name: Up to date notice
+        if: ${{ steps.versions.outputs.current != '' && steps.versions.outputs.current == steps.versions.outputs.latest }}
+        run: echo "Prettier is up to date (v${{ steps.versions.outputs.latest }})."
 
       - name: Decide dependency section (devDependencies vs dependencies)
         id: sect
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
         run: |
           if jq -e '.devDependencies.prettier' package.json >/dev/null; then
             echo "section=devDependencies" >> "$GITHUB_OUTPUT"
@@ -52,7 +63,8 @@ jobs:
           fi
 
       - name: Update package.json to latest Prettier
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
         run: |
           set -euo pipefail
           VER="${{ steps.versions.outputs.latest }}"
@@ -62,65 +74,8 @@ jobs:
           mv "$tmp" package.json
 
       - name: Ensure TOML plugin stays installed (if you use it)
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
         run: |
-          # Keep the explicit TOML plugin; no-op if already present
           if ! jq -e '.devDependencies["prettier-plugin-toml"] // .dependencies["prettier-plugin-toml"]' package.json >/dev/null; then
-            npm install --save-dev prettier-plugin-toml@latest
-          fi
-
-      - name: Refresh lockfile
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
-        run: |
-          if [ -f pnpm-lock.yaml ]; then
-            corepack enable
-            corepack prepare pnpm@latest --activate
-            pnpm install --lockfile-only
-          elif [ -f yarn.lock ]; then
-            corepack enable
-            corepack prepare yarn@stable --activate
-            yarn install --mode=update-lockfile --ignore-scripts
-          else
-            npm install --package-lock-only --ignore-scripts
-          fi
-
-      - name: Commit changes
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
-        run: |
-          set -euo pipefail
-          git config user.email "$GH_EMAIL"
-          git config user.name "$GH_NAME"
-          BR="bot/update-prettier-v${{ steps.versions.outputs.latest }}"
-          git checkout -b "$BR"
-          git add package.json package-lock.json yarn.lock pnpm-lock.yaml || true
-          git commit -m "chore(deps): bump prettier to v${{ steps.versions.outputs.latest }}"
-          git push --set-upstream origin "$BR"
-
-      - name: Fast-forward main with the update (optional)
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
-        run: |
-          # If you prefer PRs, remove this step and add a PR step instead.
-          git checkout -
-          git merge --ff-only "bot/update-prettier-v${{ steps.versions.outputs.latest }}"
-          git push
-
-      - name: Create tag
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
-        run: |
-          TAG="v${{ steps.versions.outputs.latest }}"
-          git tag -a "$TAG" -m "Prettier $TAG"
-          git push origin "$TAG"
-
-      - name: Create GitHub Release
-        if: steps.versions.outputs.current != steps.versions.outputs.latest
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.versions.outputs.latest }}
-          name: Prettier v${{ steps.versions.outputs.latest }}
-          body: |
-            Automated release to align with Prettier v${{ steps.versions.outputs.latest }}.
-            - Updated `prettier` to v${{ steps.versions.outputs.latest }}
-            - Lockfile refreshed
-            - TOML plugin ensured
-
-            See Prettier notes: https://github.com/prettier/prettier/releases/tag/v${{ steps.versions.outputs.latest }}
+            npm install
