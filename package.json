@@ -1,0 +1,14 @@
+{
+  "name": "prettier-pre-commit",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Prettier hook for pre-commit (formats JSON, YAML, Markdown, TOML).",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "prettier-plugin-toml": "^0.3.5"
+  },
+  "scripts": {
+    "fmt": "prettier --write --ignore-unknown"
+  }
+}
