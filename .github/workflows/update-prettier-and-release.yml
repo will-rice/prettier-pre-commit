@@ -90,6 +90,39 @@ jobs:
           # Update prettier version in .pre-commit-hooks.yaml
           sed -i "s/prettier@[0-9.]\+/prettier@$VER/" .pre-commit-hooks.yaml
 
+      - name: Update README .prettierrc example to match repo's .prettierrc
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use Python to update the README's .prettierrc example
+          python3 << 'EOF'
+          import re
+          import json
+
+          # Read README
+          with open('README.md', 'r') as f:
+              readme_content = f.read()
+
+          # Read actual .prettierrc
+          with open('.prettierrc', 'r') as f:
+              prettierrc_data = json.load(f)
+
+          # Format the prettierrc content with 2-space indent
+          prettierrc_formatted = json.dumps(prettierrc_data, indent=2)
+
+          # Pattern to match the code block in the Configuration section
+          pattern = r'(Create a `\.prettierrc` file in your repository root to customize formatting options:\n\n```json\n).*?(\n```)'
+
+          # Replace with the actual .prettierrc content
+          replacement = r'\1' + prettierrc_formatted + r'\2'
+          new_readme = re.sub(pattern, replacement, readme_content, flags=re.DOTALL)
+
+          # Write back to README.md
+          with open('README.md', 'w') as f:
+              f.write(new_readme)
+          EOF
+
       - name: Commit and tag changes
         if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
         shell: bash
@@ -98,7 +131,7 @@ jobs:
           VER="${{ steps.versions.outputs.latest }}"
           git config user.email "$GH_EMAIL"
           git config user.name "$GH_NAME"
-          git add package.json .pre-commit-hooks.yaml
+          git add package.json .pre-commit-hooks.yaml README.md
           git commit -m "chore: update Prettier to v$VER"
           git tag -a "v$VER" -m "Release v$VER with Prettier $VER"
           git push origin main
