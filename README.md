@@ -16,7 +16,7 @@ Add this to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/will-rice/prettier-pre-commit
-    rev: v1.0.2  # First version that works.
+    rev: v1.0.2 # First version that works.
     hooks:
       - id: prettier-format
 ```
@@ -30,6 +30,7 @@ pre-commit install
 ## Usage
 
 The hook will automatically run on staged files matching:
+
 - `*.json`
 - `*.yaml`, `*.yml`
 - `*.md`, `*.markdown`
@@ -59,6 +60,10 @@ See [Prettier configuration docs](https://prettier.io/docs/en/configuration.html
 ## Requirements
 
 - pre-commit >= 3.0.0
+
+## Contributing
+
+Contributions are welcome! This hook currently supports JSON, YAML, Markdown, and TOML files - these are the file types I use in my projects. If you'd like to add support for additional file types that Prettier can handle, feel free to open a pull request or issue.
 
 ## License
 
