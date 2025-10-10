@@ -39,13 +39,16 @@ jobs:
             echo "No package.json present; skipping."
             echo "current=" >> "$GITHUB_OUTPUT"
             echo "latest=" >> "$GITHUB_OUTPUT"
+            echo "repo_version=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           CURRENT=$(jq -r '.devDependencies.prettier // .dependencies.prettier // ""' package.json)
           CURRENT="${CURRENT#^}"; CURRENT="${CURRENT#~}"
           LATEST=$(npm view prettier version --no-update-notifier --no-fund)
+          REPO_VERSION=$(jq -r '.version // "1.0.0"' package.json)
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-            echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "repo_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Up to date notice
         if: ${{ steps.versions.outputs.current != '' && steps.versions.outputs.current == steps.versions.outputs.latest }}
@@ -62,6 +65,20 @@ jobs:
             echo "section=dependencies" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Calculate new version
+        id: newver
+        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO_VERSION="${{ steps.versions.outputs.repo_version }}"
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$REPO_VERSION"
+          # Bump patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Update package.json to latest Prettier
         if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
         shell: bash
@@ -69,8 +86,9 @@ jobs:
           set -euo pipefail
           VER="${{ steps.versions.outputs.latest }}"
           SEC="${{ steps.sect.outputs.section }}"
+          NEW_VERSION="${{ steps.newver.outputs.new_version }}"
           tmp=package.json.tmp
-          jq --arg v "$VER" --arg s "$SEC" '.[$s].prettier = $v' package.json > "$tmp"
+          jq --arg v "$VER" --arg s "$SEC" --arg nv "$NEW_VERSION" '.[$s].prettier = $v | .version = $nv' package.json > "$tmp"
           mv "$tmp" package.json
 
       - name: Ensure TOML plugin stays installed (if you use it)
@@ -128,21 +146,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VER="${{ steps.versions.outputs.latest }}"
+          PRETTIER_VER="${{ steps.versions.outputs.latest }}"
+          NEW_VERSION="${{ steps.newver.outputs.new_version }}"
           git config user.email "$GH_EMAIL"
           git config user.name "$GH_NAME"
           git add package.json .pre-commit-hooks.yaml README.md
-          git commit -m "chore: update Prettier to v$VER"
-          git tag -a "v$VER" -m "Release v$VER with Prettier $VER"
+          git commit -m "chore: update Prettier to v$PRETTIER_VER"
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION with Prettier $PRETTIER_VER"
           git push origin main
-          git push origin "v$VER"
+          git push origin "v$NEW_VERSION"
 
       - name: Create GitHub Release
         if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VER="${{ steps.versions.outputs.latest }}"
-          gh release create "v$VER" \
-            --title "v$VER" \
-            --notes "Updated Prettier to v$VER"
+          PRETTIER_VER="${{ steps.versions.outputs.latest }}"
+          NEW_VERSION="${{ steps.newver.outputs.new_version }}"
+          gh release create "v$NEW_VERSION" \
+            --title "v$NEW_VERSION" \
+            --notes "Updated Prettier to v$PRETTIER_VER"
