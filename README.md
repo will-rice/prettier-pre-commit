@@ -16,7 +16,7 @@ Add this to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/will-rice/prettier-pre-commit
-    rev: v1.0.0  # Use the latest version
+    rev: v1.0.2  # First version that works.
     hooks:
       - id: prettier-format
 ```
