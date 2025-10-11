@@ -3,7 +3,7 @@ name: Update Prettier and Release
 on:
   schedule:
     - cron: "17 7 * * *"   # daily at 07:17 UTC — change as you like
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 concurrency:
   group: update-prettier
