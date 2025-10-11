@@ -39,7 +39,7 @@ The hook will automatically run on staged files matching:
 To manually format files:
 
 ```bash
-pre-commit run prettier-format --all-files
+pre-commit run prettier-format -a
 ```
 
 ## Configuration
