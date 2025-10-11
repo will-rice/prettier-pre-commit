@@ -1,177 +1,65 @@
-name: Update Prettier and Release
+name: Release
 
 on:
-  schedule:
-    - cron: "17 7 * * *"
-  workflow_dispatch:
-
-concurrency:
-  group: update-prettier
-  cancel-in-progress: false
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
-  update-and-release:
+  release:
     runs-on: ubuntu-latest
-    env:
-      GH_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-      GH_NAME: github-actions[bot]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
-      - name: Determine current & latest Prettier versions
-        id: versions
+      - name: Get current version and increment patch
+        id: version
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! -f package.json ]]; then
-            echo "current=" >> "$GITHUB_OUTPUT"
-            echo "latest=" >> "$GITHUB_OUTPUT"
-            echo "repo_version=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          CURRENT=$(jq -r '.devDependencies.prettier // .dependencies.prettier // ""' package.json)
-          CURRENT="${CURRENT#^}"; CURRENT="${CURRENT#~}"
-          LATEST=$(npm view prettier version --no-update-notifier --no-fund)
-          REPO_VERSION=$(jq -r '.version // "1.0.0"' package.json)
-          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-          echo "repo_version=$REPO_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Up to date notice
-        if: ${{ steps.versions.outputs.current != '' && steps.versions.outputs.current == steps.versions.outputs.latest }}
-        run: echo "Prettier is up to date (v${{ steps.versions.outputs.latest }})."
-
-      - name: Decide dependency section
-        id: sect
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
-        shell: bash
-        run: |
-          if jq -e '.devDependencies.prettier' package.json >/dev/null; then
-            echo "section=devDependencies" >> "$GITHUB_OUTPUT"
-          else
-            echo "section=dependencies" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Calculate new repo version
-        id: newver
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          ver='${{ steps.versions.outputs.repo_version }}'
+          CURRENT_VERSION=$(jq -r '.version // "1.0.0"' package.json)
           # Extract X.Y.Z (ignore prerelease/build metadata if present)
-          core="${ver%%-*}"; core="${core%%+*}"
+          core="${CURRENT_VERSION%%-*}"; core="${CURRENT_VERSION%%+*}"
           IFS='.' read -r MAJOR MINOR PATCH <<< "${core:-0.0.0}"
           : "${MAJOR:=0}" "${MINOR:=0}" "${PATCH:=0}"
-          echo "new_version=${MAJOR}.${MINOR}.$((PATCH + 1))" >> "$GITHUB_OUTPUT"
+          NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Incrementing version from $CURRENT_VERSION to $NEW_VERSION"
 
-      - name: Update package.json to latest Prettier
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+      - name: Update package.json version
         shell: bash
         run: |
           set -euo pipefail
-          VER='${{ steps.versions.outputs.latest }}'
-          SEC='${{ steps.sect.outputs.section }}'
-          NEW_VERSION='${{ steps.newver.outputs.new_version }}'
-          tmp=package.json.tmp
-          # Ensure the section exists, then set version and prettier
-          jq --arg s "$SEC" --arg v "$VER" --arg nv "$NEW_VERSION" \
-            '(.[$s] //= {}) | .[$s].prettier = $v | .version = $nv' \
-            package.json > "$tmp"
-          mv "$tmp" package.json
+          NEW_VERSION='${{ steps.version.outputs.new_version }}'
+          jq --arg nv "$NEW_VERSION" '.version = $nv' package.json > package.json.tmp
+          mv package.json.tmp package.json
 
-      - name: Ensure TOML plugin is present (optional)
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
+      - name: Commit and tag
         shell: bash
         run: |
           set -euo pipefail
-          if ! jq -e '.devDependencies["prettier-plugin-toml"] // .dependencies["prettier-plugin-toml"]' package.json >/dev/null; then
-            npm install --save-dev prettier-plugin-toml
-          fi
-
-      - name: Install deps and update lockfile
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
-        run: npm ci || npm install
-
-      - name: Update .pre-commit-hooks.yaml (if present)
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          VER='${{ steps.versions.outputs.latest }}'
-          if [[ -f .pre-commit-hooks.yaml ]]; then
-            sed -i "s/prettier@[0-9][0-9.]\+/prettier@$VER/" .pre-commit-hooks.yaml || true
-          else
-            echo ".pre-commit-hooks.yaml not found; skipping."
-          fi
-
-      - name: Update README .prettierrc example (if JSON file present)
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -f .prettierrc && -f README.md ]]; then
-            python3 << 'EOF'
-            import re, json, sys
-            try:
-              readme = open('README.md','r',encoding='utf-8').read()
-              prettierrc = json.load(open('.prettierrc','r',encoding='utf-8'))
-            except Exception as e:
-              print(f"Skip README update: {e}")
-              sys.exit(0)
-            block = json.dumps(prettierrc, indent=2)
-            pat = r'(Create a `\.prettierrc` file in your repository root to customize formatting options:\n\n```json\n).*?(\n```)'  # noqa: E501
-            new = re.sub(pat, r'\1'+block+r'\2', readme, flags=re.DOTALL)
-            open('README.md','w',encoding='utf-8').write(new)
-            EOF
-          else
-            echo "README.md or .prettierrc missing; skipping README update."
-          fi
-
-      - name: Commit and tag changes
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          PRETTIER_VER='${{ steps.versions.outputs.latest }}'
-          NEW_VERSION='${{ steps.newver.outputs.new_version }}'
-          git config user.email "$GH_EMAIL"
-          git config user.name "$GH_NAME"
-          git add package.json package-lock.json .pre-commit-hooks.yaml README.md || true
-          # Only commit if there are changes
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update Prettier to v$PRETTIER_VER"
-          else
-            echo "No changes to commit."
-          fi
-          # Tag if not already existing
-          if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
-            echo "Tag v$NEW_VERSION already exists."
-          else
-            git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION with Prettier $PRETTIER_VER"
-          fi
-          git push origin HEAD --follow-tags
+          NEW_VERSION='${{ steps.version.outputs.new_version }}'
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add package.json
+          git commit -m "chore: bump version to v$NEW_VERSION"
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin main --follow-tags
 
       - name: Create GitHub Release
-        if: ${{ steps.versions.outputs.latest != '' && steps.versions.outputs.current != steps.versions.outputs.latest }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # <-- authenticate gh
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PRETTIER_VER='${{ steps.versions.outputs.latest }}'
-          NEW_VERSION='${{ steps.newver.outputs.new_version }}'
-          gh release view "v$NEW_VERSION" >/dev/null 2>&1 || \
-            gh release create "v$NEW_VERSION" \
-              --title "v$NEW_VERSION" \
-              --notes "Updated Prettier to v$PRETTIER_VER"
+          NEW_VERSION='${{ steps.version.outputs.new_version }}'
+          gh release create "v$NEW_VERSION" \
+            --title "v$NEW_VERSION" \
+            --generate-notes
