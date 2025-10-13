@@ -48,9 +48,6 @@ Create a `.prettierrc` file in your repository root to customize formatting opti
 
 ```json
 {
-  "tabWidth": 2,
-  "semi": false,
-  "singleQuote": true,
   "plugins": ["prettier-plugin-toml"]
 }
 ```
