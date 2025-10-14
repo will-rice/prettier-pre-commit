@@ -1,10 +1,11 @@
 # prettier-pre-commit
 
-A minimal [pre-commit](https://pre-commit.com/) hook that uses [Prettier](https://prettier.io/) to format configuration files in Python projects.
+A minimal [pre-commit](https://pre-commit.com/) hook that uses [Prettier](https://prettier.io/) to format files in your projects.
 
 ## Features
 
-- Formats JSON, YAML, Markdown, and TOML files
+- Formats JavaScript, TypeScript, CSS, HTML, JSON, YAML, Markdown, GraphQL, Vue, and more
+- Supports all file formats that Prettier natively handles
 - No system Node.js installation required (uses isolated nodeenv)
 - Includes TOML support via `prettier-plugin-toml`
 - Automatically fixes formatting issues
@@ -29,12 +30,15 @@ pre-commit install
 
 ## Usage
 
-The hook will automatically run on staged files matching:
+The hook will automatically run on staged files with extensions that Prettier supports, including:
 
-- `*.json`
-- `*.yaml`, `*.yml`
-- `*.md`, `*.markdown`
-- `*.toml`
+- **JavaScript/TypeScript**: `*.js`, `*.jsx`, `*.ts`, `*.tsx`, `*.mjs`, `*.cjs`, and more
+- **Web**: `*.html`, `*.htm`, `*.vue`, `*.handlebars`, `*.hbs`
+- **Styles**: `*.css`, `*.scss`, `*.less`, `*.pcss`
+- **Data formats**: `*.json`, `*.json5`, `*.yaml`, `*.yml`, `*.toml`
+- **Markup**: `*.md`, `*.markdown`, `*.mdx`
+- **GraphQL**: `*.graphql`, `*.gql`
+- And more!
 
 To manually format files:
 
@@ -60,7 +64,7 @@ See [Prettier configuration docs](https://prettier.io/docs/en/configuration.html
 
 ## Contributing
 
-Contributions are welcome! This hook currently supports JSON, YAML, Markdown, and TOML files - these are the file types I use in my projects. If you'd like to add support for additional file types that Prettier can handle, feel free to open a pull request or issue.
+Contributions are welcome! This hook now supports all major file types that Prettier can handle. If you'd like to add support for additional Prettier plugins or improve the hook, feel free to open a pull request or issue.
 
 ## License
 
