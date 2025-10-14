@@ -2,7 +2,7 @@
   "name": "prettier-pre-commit",
   "private": true,
   "version": "1.0.5",
-  "description": "Prettier hook for pre-commit (formats JSON, YAML, Markdown, TOML).",
+  "description": "Prettier hook for pre-commit (supports all Prettier file formats).",
   "license": "MIT",
   "devDependencies": {
     "prettier": "3.6.2",
