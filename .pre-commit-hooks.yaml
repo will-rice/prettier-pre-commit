@@ -6,7 +6,7 @@
   # Prettier gets installed into an isolated nodeenv; no system Node required.
   additional_dependencies:
     - prettier@3.6.2
-    - prettier-plugin-toml@0.3.5
+    - prettier-plugin-toml@2.0.6
   files: \.(cjs|css|cts|es6?|gql|graphqls?|handlebars|hbs|html?|js|jsx?|json5?c?|less|livemd|mdx?|m(ark)?down|mdwn|mk(d|dn|down)|mjml|mjs|mts|pcss|postcss|scss|toml|tsx?|vue|xht(ml)?|ya?ml)$
   args: ["--write", "--ignore-unknown", "--plugin=prettier-plugin-toml"]
   minimum_pre_commit_version: "3.0.0"
