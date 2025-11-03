@@ -1,0 +1,190 @@
+name: Test Pre-commit Hook
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-hook:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pre-commit
+        run: pip install pre-commit
+      
+      - name: Create test pre-commit config
+        run: |
+          # Backup original .prettierrc if it exists to avoid plugin loading issues
+          if [ -f .prettierrc ]; then
+            mv .prettierrc .prettierrc.bak
+          fi
+          
+          cat > .pre-commit-config.yaml << 'EOF'
+          repos:
+            - repo: local
+              hooks:
+                - id: prettier-format
+                  name: prettier-format
+                  description: "Format files with Prettier (JS, TS, CSS, HTML, JSON, YAML, Markdown, and more)"
+                  entry: prettier
+                  language: node
+                  additional_dependencies:
+                    - prettier@3.6.2
+                    - prettier-plugin-toml@2.0.6
+                  files: \.(cjs|css|cts|es6?|gql|graphqls?|handlebars|hbs|html?|js|jsx?|json5?c?|less|livemd|mdx?|m(ark)?down|mdwn|mk(d|dn|down)|mjml|mjs|mts|pcss|postcss|scss|toml|tsx?|vue|xht(ml)?|ya?ml)$
+                  args: ["--write", "--ignore-unknown"]
+                  minimum_pre_commit_version: "3.0.0"
+          EOF
+      
+      - name: Create test files with formatting issues
+        run: |
+          mkdir -p test-files
+          
+          # JavaScript file with bad formatting
+          cat > test-files/test.js << 'EOF'
+          const   x =    1;
+          const y={a:1,b:2};
+          function test(  ){return "hello";}
+          EOF
+          
+          # TypeScript file with bad formatting
+          cat > test-files/test.ts << 'EOF'
+          interface User{name:string;age:number}
+          const user:User={name:"test",age:30};
+          EOF
+          
+          # JSON file with bad formatting
+          cat > test-files/test.json << 'EOF'
+          {"name":"test","value":123,"nested":{"key":"value"}}
+          EOF
+          
+          # YAML file with bad formatting
+          cat > test-files/test.yaml << 'EOF'
+          name: test
+          values:   [1,2,3]
+          nested:  {key: value}
+          EOF
+          
+          # CSS file with bad formatting
+          cat > test-files/test.css << 'EOF'
+          .class{color:red;background:blue;}
+          .another{margin:0;padding:0;}
+          EOF
+          
+          # Markdown file with bad formatting
+          cat > test-files/test.md << 'EOF'
+          # Title
+          
+          
+          This is   a    test.
+          
+          -   item1
+          -   item2
+          EOF
+          
+          # HTML file with bad formatting
+          cat > test-files/test.html << 'EOF'
+          <html><body><div><p>Hello</p></div></body></html>
+          EOF
+          
+          # TOML file with bad formatting
+          cat > test-files/test.toml << 'EOF'
+          [section]
+          key    =    "value"
+          number=123
+          EOF
+      
+      - name: Show files before formatting
+        run: |
+          echo "=== Files before formatting ==="
+          for file in test-files/*; do
+            echo "--- $file ---"
+            cat "$file"
+            echo ""
+          done
+      
+      - name: Run pre-commit on test files
+        run: |
+          pre-commit run --files test-files/* || true
+      
+      - name: Show files after formatting
+        run: |
+          echo "=== Files after formatting ==="
+          for file in test-files/*; do
+            echo "--- $file ---"
+            cat "$file"
+            echo ""
+          done
+      
+      - name: Verify files were formatted
+        run: |
+          echo "Checking that files were formatted correctly..."
+          
+          # Check JavaScript - should have proper spacing
+          if grep -q "const x = 1;" test-files/test.js; then
+            echo "✓ JavaScript formatted correctly"
+          else
+            echo "✗ JavaScript not formatted"
+            cat test-files/test.js
+            exit 1
+          fi
+          
+          # Check JSON - should be formatted with proper indentation
+          if grep -q '"name": "test"' test-files/test.json; then
+            echo "✓ JSON formatted correctly"
+          else
+            echo "✗ JSON not formatted"
+            cat test-files/test.json
+            exit 1
+          fi
+          
+          # Check CSS - should have proper spacing
+          if grep -q "color: red;" test-files/test.css; then
+            echo "✓ CSS formatted correctly"
+          else
+            echo "✗ CSS not formatted"
+            cat test-files/test.css
+            exit 1
+          fi
+          
+          echo "All files formatted successfully!"
+      
+      - name: Test hook passes on already formatted files
+        run: |
+          # Run pre-commit again - should pass without changes
+          pre-commit run --files test-files/* && echo "✓ Hook passes on formatted files"
+      
+      - name: Test with repository files
+        run: |
+          # Restore .prettierrc if it was backed up
+          if [ -f .prettierrc.bak ]; then
+            mv .prettierrc.bak .prettierrc
+          fi
+          
+          # Test on actual repository files
+          pre-commit run --files package.json || true
+          echo "✓ Repository files tested"
+      
+      - name: Clean pre-commit cache
+        run: pre-commit clean

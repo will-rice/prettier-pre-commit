@@ -1,5 +1,7 @@
 # prettier-pre-commit
 
+[![Test Pre-commit Hook](https://github.com/will-rice/prettier-pre-commit/actions/workflows/test.yml/badge.svg)](https://github.com/will-rice/prettier-pre-commit/actions/workflows/test.yml)
+
 A minimal [pre-commit](https://pre-commit.com/) hook that uses [Prettier](https://prettier.io/) to format files in your projects.
 
 ## Features
