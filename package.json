@@ -1,7 +1,7 @@
 {
   "name": "prettier-pre-commit",
   "private": true,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Prettier hook for pre-commit (supports all Prettier file formats).",
   "license": "MIT",
   "devDependencies": {
