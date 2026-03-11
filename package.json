@@ -4,11 +4,14 @@
   "version": "1.0.9",
   "description": "Prettier hook for pre-commit (supports all Prettier file formats).",
   "license": "MIT",
-  "devDependencies": {
+  "bin": {
+    "prettier-format": "./bin/prettier-format.js"
+  },
+  "dependencies": {
     "prettier": "3.6.2",
-    "prettier-plugin-toml": "^2.0.6"
+    "prettier-plugin-toml": "2.0.6"
   },
   "scripts": {
-    "fmt": "prettier --write --ignore-unknown"
+    "fmt": "node ./bin/prettier-format.js --write --ignore-unknown"
   }
 }

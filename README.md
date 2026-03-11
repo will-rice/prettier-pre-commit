@@ -54,9 +54,13 @@ Create a `.prettierrc` file in your repository root to customize formatting opti
 
 ```json
 {
-  "plugins": ["prettier-plugin-toml"]
+  "printWidth": 100,
+  "singleQuote": true,
+  "trailingComma": "all"
 }
 ```
+
+> **Note**: When using this pre-commit hook, do not add `prettier-plugin-toml` to your `.prettierrc` `plugins` field — the hook loads it automatically with a resolved path. Adding it by bare module name would cause Prettier to fail resolving the plugin from your project's directory, since the plugin is installed inside the hook's isolated environment rather than your project's `node_modules`.
 
 See [Prettier configuration docs](https://prettier.io/docs/en/configuration.html) for all options.
 
