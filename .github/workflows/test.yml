@@ -12,6 +12,8 @@ permissions:
 jobs:
   test-hook:
     runs-on: ubuntu-latest
+    env:
+      PRE_COMMIT_HOME: ${{ runner.temp }}/pre-commit-home
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -95,6 +97,9 @@ jobs:
             echo ""
           done
 
+      - name: Ensure a fresh pre-commit environment
+        run: rm -rf "$PRE_COMMIT_HOME"
+
       - name: Run hook via pre-commit try-repo
         run: |
           pre-commit try-repo . prettier-format --files test-files/* || true
@@ -157,4 +162,3 @@ jobs:
 
       - name: Clean pre-commit cache
         run: pre-commit clean
-
