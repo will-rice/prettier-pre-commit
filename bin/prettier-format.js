@@ -12,18 +12,11 @@ const { spawnSync } = require('child_process');
 // (e.g. when installed as a nested dependency in pre-commit's node environment).
 const prettierBin = require.resolve('prettier/bin/prettier.cjs');
 
-const pluginArgs = [];
-
-try {
-  const pluginPath = require.resolve('prettier-plugin-toml');
-  pluginArgs.push(`--plugin=${pluginPath}`);
-} catch (_) {
-  // prettier-plugin-toml not found; TOML files will be skipped via --ignore-unknown
-}
+const pluginPath = require.resolve('prettier-plugin-toml');
 
 const result = spawnSync(
   process.execPath,
-  [prettierBin, ...pluginArgs, ...process.argv.slice(2)],
+  [prettierBin, `--plugin=${pluginPath}`, ...process.argv.slice(2)],
   { stdio: 'inherit', env: process.env },
 );
 
