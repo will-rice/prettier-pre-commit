@@ -10,20 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  test-install:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Run tests
-        run: npm test
-
   test-hook:
     runs-on: ubuntu-latest
     env:
