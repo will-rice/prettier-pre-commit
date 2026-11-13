@@ -12,6 +12,7 @@
     "prettier-plugin-toml": "2.0.6"
   },
   "scripts": {
+    "test": "node --test",
     "fmt": "node ./bin/prettier-format.js --write --ignore-unknown"
   }
 }
